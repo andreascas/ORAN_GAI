@@ -1,0 +1,16 @@
+MEC
+
+uetoue
+python3 mec.py -li 192.168.10.30 -ue2 192.168.100.2 -ue1 192.168.100.5 -lf uetoue -d True -p 60000
+ python3 ue1.py -li 192.168.100.5 -mec 192.168.10.30 -d 1 -p  60000
+python3 ue2.py -li 192.168.100.2 -mec 192.168.100.5 -d True -p 60000
+
+nogai
+python3 mec.py -li 192.168.10.30 -ue2 192.168.100.2 -ue1 192.168.100.5 -lf nogai  -p 60000
+python3 ue1.py -li 192.168.100.5 -mec 192.168.10.30 -g 1 -p  60000
+python3 ue2.py -li 192.168.100.2 -mec 192.168.10.30 -p 60000
+
+gai
+python3 mec.py -li 192.168.10.30 -ue2 192.168.100.2 -ue1 192.168.100.5 -lf withgai  -p 60000
+python3 ue1.py -li 192.168.100.5 -mec 192.168.10.30 -p 60000
+python3 ue2.py -li 192.168.100.2 -mec 192.168.10.30 -p 60000
