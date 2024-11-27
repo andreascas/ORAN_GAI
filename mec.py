@@ -25,8 +25,6 @@ def parseArguments():
     parser.add_argument('-li',"--host", help="Host which the server is running on", type=str, default='127.0.0.1')
     parser.add_argument('-ue1',"--user1", help="UE 1 host who we receive video from", type=str,  default='127.0.0.1')
     parser.add_argument('-ue2',"--user2", help="UE 2 host who we forward video to", type=str,  default='127.0.0.1')
-    parser.add_argument('-rnti',"--rnti", help="RNTI of user 1", type=str,  default='0xffff')
-    parser.add_argument('-d',"--direct", help="Direct UE to UE communication", type=bool,  default=False)
 
     args = parser.parse_args()
 
@@ -61,13 +59,13 @@ class gai_server(): # We are running this on MEC
     
     def __init__(self, host = '127.0.0.1', ue1 = "127.0.0.1",port_data1 = 65432,
                  ue2 = "127.0.0.1", port_data2 = 65433,
-                  port_control = 65434,rnti=None,logfolder = 'test/',uetoue=False):
+                  port_control = 65434,rnti=None,logfolder = 'test/'):
         
         
         if ue1 != '127.0.0.1':
             ric.init()
             self.conn = ric.conn_e2_nodes()
-            self.monitor = monitor(logfolder,uetoue)
+            self.monitor = monitor(logfolder)
         
 
         self.logfolder = logfolder
@@ -78,8 +76,6 @@ class gai_server(): # We are running this on MEC
         
         self.port_data1 = port_data1
         self.port_data2 = port_data2
-        if uetoue:
-            self.port_rec2 = port_control+1  
 
         self.host1 =  ue1 #loopback
         self.port_control = port_control 
@@ -90,7 +86,6 @@ class gai_server(): # We are running this on MEC
         self.cur_gai = False
         self.rnti=rnti
         self.ready = False
-        self.uetoue = uetoue
 
 
     def run(self):
@@ -178,8 +173,6 @@ class gai_server(): # We are running this on MEC
         bleh = 20
         pusch = bleh
         
-        if self.uetoue:
-            high_snr = 27
         if self.ready:
             high_snr = 35
             
@@ -208,12 +201,9 @@ class gai_server(): # We are running this on MEC
         self.device = 'cuda'
         self.model = self.model.to(device)
         print("connecting to UE2")
-        if self.uetoue ==False:
-            to_ue2_socket,ue2addr= self.start_server(self.host,self.port_data2)
-            client_socket =self.start_client(self.host1, self.port_data1)
-        else:
-            client_socket =self.start_client(self.host1, self.port_rec2)
-             
+        to_ue2_socket,ue2addr= self.start_server(self.host,self.port_data2)
+        client_socket =self.start_client(self.host1, self.port_data1)
+
         print("connecting to UE1")
         
         data = b""
@@ -222,8 +212,6 @@ class gai_server(): # We are running this on MEC
         self.ready = True
         if self.verbose:
             print("going into self.running")
-        if self.uetoue == True:
-            print("no forwarding done")
         while self.running:
             received_correctly = True
 ####################### Need to cut this out#######################
@@ -260,8 +248,7 @@ class gai_server(): # We are running this on MEC
                     self.forward_frame_ts,self.receive_frame_ts= {i:-1 for i in range(12500)} ,{i:-1 for i in range(12500)}
                     placeholder_data = pickle.dumps('placeholderdata')
                     cntrl_message = pickle.dumps(f'terminate_{new_name}')
-                    if self.uetoue == False:
-                        to_ue2_socket.sendall(struct.pack("2Q", len(cntrl_message), len(placeholder_data)) + cntrl_message + placeholder_data)
+                    to_ue2_socket.sendall(struct.pack("2Q", len(cntrl_message), len(placeholder_data)) + cntrl_message + placeholder_data)
                     continue # we continue into the new packet we receive
                 if rec_gaistatus == 'exit':
                     print("exitting")
@@ -304,8 +291,7 @@ class gai_server(): # We are running this on MEC
                     print("postgai:",np.round((post_gai-rx_t)/1000000,2),", pretrans:",np.round((tx_t-rx_t)/1000000,2))
 
         client_socket.close()
-        if self.uetoue == False:
-            to_ue2_socket.close()
+        to_ue2_socket.close()
         self.running = False
 
         if self.host1 != '127.0.0.1':
@@ -343,11 +329,8 @@ from sm_api import monitor_app
 
 class monitor():
 
-    def __init__(self,logfolder,uetoue=False):
-        if uetoue:
-            self.average_count = 500
-        else:
-            self.average_count = 500
+    def __init__(self,logfolder):
+        self.average_count = 500
         self.logfolder=logfolder
         self.monitor_handle = monitor_app.monitor() 
         self.mac_cb = self.monitor_handle.mac_cb
@@ -397,19 +380,14 @@ def get_rnti(ip):
 args = parseArguments()
 inp = args.__dict__
 
-if inp['user1'] != '127.0.0.1':
-    rnti = get_rnti(inp['user1'])
-else:
-    rnti = inp['rnti']
 
 
-route_ue1 = f"echo {'computingpc'} | sudo ip route add {inp['user1']} via 192.168.10.15 dev eno1 onlink"
-route_ue2 = f"echo {'computingpc'} | sudo ip route add {inp['user2']} via 192.168.10.15 dev eno1 onlink"
+
 
 
 mec_handle = gai_server(host = inp['host'],ue1 = inp['user1'],port_data1 = inp['port'],
                  ue2 = inp['user2'], port_data2 = inp['port']+1,
-                  port_control = inp['port']+2, logfolder=inp['logfolder'],rnti=rnti,
-                  uetoue=inp['direct'])
+                  port_control = inp['port']+2, logfolder=inp['logfolder'],rnti=inp['rnti']
+                  )
 
 mec_handle.run()

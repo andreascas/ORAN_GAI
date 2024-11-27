@@ -174,33 +174,21 @@ def get_results_for_experiment(experiment_folder):
         latencies[idn] ,t_send_ts[idn],t_receive_ts[idn]  = get_end_to_end_latency(ue1,ue2)
         avg_latencies[idn] = np.mean(latencies[idn])
 
-    # getting the channel quality over time, below 25 we compress
 
     if get_RAN_data_:
         print("getting RAN data")
         data_channel,ts_channel = get_channel(experiment_folder,plot=False)
-        #data_ul,ts_ul = get_ul_data(experiment_folder)
-        #data_dl, ts_dl = get_dl_data(experiment_folder,plot=False)
         dl_data,ul_data = [],[]
         channel = pd.DataFrame({'data':data_channel,'ts':ts_channel})
-        #ul = pd.DataFrame({'data':data_ul,'ts':ts_ul})
-        #dl = pd.DataFrame({'data':data_dl,'ts':ts_dl})
         ts = pd.DataFrame({'data':ts_channel,'ts':ts_channel})
 
         for i in range(len(ue1_channel)):
             idn = experiments['mec'][i]
             period_start, period_end = t_send_ts[idn][0], t_receive_ts[idn][-1]
-            #for output,param in zip([ue1_channel,ue1_uplinkdata,ue2_downlinkdata,meas_ts],[channel,ul,dl,ts]):
             for output,param in zip([ue1_channel,meas_ts],[channel,ts]):
                 j = param[param.ts > period_start]
                 output[idn] = j[j.ts<period_end].data.values # only saving the actual data, not ts
         
-        #then we run moving average
-        # for i in range(len(ue1_uplinkdata)):
-        #     dl_data.append(ue2_downlinkdata[str(i+1)])
-        #     ul_data.append(ue1_uplinkdata[str(i+1)])
-
-    # image processing for similarity score
 
     file = open(f"{experiment_folder}/ue1/metadata.pickle",'rb')
     metadata = pickle.load(file)
@@ -247,27 +235,11 @@ def get_results_for_experiment(experiment_folder):
 
 experiment_folders = [
                       'newincreased/newincreased_tradscale/',
-                      'newincreased/newincreased_gaiscale/',
-                      'newincreased/newincreased_noscale/'] 
-experiment_folders = ['big/big_tradscale/',
-                      'big/big_gaiscale/',
-                      'big/big_noscale/'
-                      ] 
+                      'newincreased/newincreased_gaiscale/'] 
 
-# experiment_folders = [
-#                       'newincreased_withran/newincrease_gairan/',
-#                       'newincreased_withran/newincrease_tradran/']
-#                       # 
-#experiment_folders = ['results_trad_noscalesmall'] # 
-# experiment_folders = [
-#                       'newincreased_withran/newincrease_gairan/',
-#                       'newincreased_withran/newincrease_tradran/'] 
+get_RAN_data_ = True 
 
-get_RAN_data_ = True
-# 'multiple_datasets/new_big/'
-#fig, ax = plt.subplots(2,3,figsize=(16,16))
 fig, ax = plt.subplots(1,2,figsize=(16,8))
-
 output_data = {folder:[] for folder in experiment_folders}
 
 for experiment_folder in experiment_folders:
@@ -282,19 +254,11 @@ for experiment_folder in experiment_folders:
     
     cdf, psnr = get_cdf_info(np.hstack(psnrs))
     cdf_lat, latency = get_cdf_info(np.hstack(latencies))
-    #fig.suptitle(experiment_folder)
     ax[0].plot(psnr,cdf,label = experiment_folder)
 
     ax[1].plot(latency,cdf_lat,label = experiment_folder)
     ax[1].set_xlim([0,150])
 
-
-    # ax[1,0].plot(ul_data,label = experiment_folder)
-
-    # ax[1,1].plot(ul_channel,label = experiment_folder)
-
-
-    # ax[1,2].plot(dl_data,label = experiment_folder)
 
 ax[0].title.set_text('psnr')
 ax[0].set_ylabel("CDF")
@@ -307,19 +271,6 @@ ax[1].set_xlabel("video frame latency (ms)")
 ax[1].legend(experiment_folders)
 
 
-# ax[1,0].title.set_text('ul data')
-# ax[1,0].set_ylabel("bits per ms UL")
-# ax[1,0].set_xlabel("Time")
-# ax[1,0].legend(['multiple_datasets/new_ueupscale/','multiple_datasets/new_big/'])
-
-# ax[1,1].title.set_text('ul channel')
-# ax[1,1].set_ylabel("UL Channel SNR")
-# ax[1,1].set_xlabel("Time")
-# ax[1,1].legend(['multiple_datasets/new_ueupscale/','multiple_datasets/new_big/'])
-# ax[1,2].title.set_text('dl data')
-# ax[1,2].set_ylabel("bits per ms DL")
-# ax[1,2].set_xlabel("Time")
-# ax[1,2].legend(['multiple_datasets/new_ueupscale/','multiple_datasets/new_big/'])
 # %%
 
 
@@ -371,10 +322,9 @@ if save_fig:
 # %% PSNR figures
 
 def plot_subset(rec_ts,meas_ts,index=-1,start_index = 0):
-    #new_data = meas_ts<rec_ts[index] # after initial
     new_rec_ = rec_ts[start_index:index] - rec_ts[start_index]
 
-    new_meas_1 = meas_ts>=rec_ts[start_index] # after initial
+    new_meas_1 = meas_ts>=rec_ts[start_index] 
     meas_start = len(meas_ts) - sum(new_meas_1)
     new_meas_2 = meas_ts<rec_ts[index]
 
@@ -385,8 +335,8 @@ t_offset = 0
 index_offset = 1400
 factor = 5
 save_fig = False
-psnr_label = ['GAI','Trad','lel']
-phy_label = ['GAI_channel','Trad_channel','lel']
+psnr_label = ['GAI','Trad']
+phy_label = ['GAI_channel','Trad_channel']
 plt_index = 0
 d_rate = 20
 for i in range(len(experiment_folders[:3])):
@@ -400,10 +350,8 @@ for i in range(len(experiment_folders[:3])):
     rec_ts= np.array(rec_ts)
     new_meas_indexes,new_rec,meas_start = plot_subset(np.array(rec_ts[plt_index]),np.array(meas_ts[plt_index]),index,start_index)
     new_meas = meas_ts[plt_index][new_meas_indexes] - meas_ts[plt_index][new_meas_indexes][0]
-    #print(start_index,index)
     plt.plot(new_rec/1000000000,psnrs[plt_index][start_index:index],label=psnr_label[i]+experiment_folder)
     #plt.plot(new_rec/1000000000,latencies[plt_index][start_index:index],label='latency')
-    #print(new_rec[:10])
     plt.plot(new_meas[::d_rate]/1000000000,ul_channel[plt_index][meas_start:len(new_meas)+meas_start:d_rate],label=phy_label[i]+experiment_folder)
     
     ts_video = pd.DataFrame(new_rec/1000000000)
@@ -411,10 +359,6 @@ for i in range(len(experiment_folders[:3])):
     ts_channel = pd.DataFrame(new_meas[::d_rate]/1000000000)
     channel = pd.DataFrame(ul_channel[plt_index][meas_start:len(new_meas)+meas_start:d_rate])
 
-    # ts_video.to_csv(f'phucdata/{psnr_label[i]}_ts_psnr.csv')
-    # video.to_csv(f'phucdata/{psnr_label[i]}_psnr.csv')
-    # ts_channel.to_csv(f'phucdata/{psnr_label[i]}_ts_channel.csv')
-    # channel.to_csv(f'phucdata/{psnr_label[i]}_channel.csv')
 
 
 plt.legend()
@@ -497,8 +441,6 @@ cutoff = 100
 plt.plot(cdf_lat_1[:-cutoff],latency_2[:-cutoff]-latency_1[:-cutoff])
 
 # %%
-#for experiment_folder in experiment_folders:
-    #output_data[experiment_folder] = get_results_for_experiment(experiment_folder)
 latencies,psnrs,ul_data,ul_channel,dl_data,meas_ts,rec_ts = output_data[experiment_folder]
 
 plt.plot((np.array(rec_ts[0][:])-rec_ts[0][0])/1000000000,latencies[0])
@@ -506,5 +448,3 @@ plt.plot((np.array(meas_ts[0][:])-meas_ts[0][0])/1000000000,ul_channel[0])
 
 # %%
 # loading data to validate correctness
-
-data = get_ran_data(experiment_folder)
