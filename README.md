@@ -14,6 +14,9 @@ numpy\
 pandas - for analysis\
 basicsr\
 tikzplotlib - for plotting purposes only\
+vmaf\
+
+
 
 ### RAN
 We use the [OaI project](https://gitlab.eurecom.fr/oai/openairinterface5g) for the base station. From this we deploy the 4G code for an eNB. \
@@ -25,13 +28,22 @@ The RIC code must be installed on any computer intending to run the mec.py, as i
 We applied the [srsRAN project](https://github.com/srsran), where we modified part of the UE code to alter its TX power over time.\
 These act to transfer data from transmitter and receiver of the data is forward through the RAN.
 
+The altering of TX power over time of UE1 is used as a feature to start our script 
 
 ### CN
 We applied the [Open5gs project](https://github.com/open5gs), but any CN should work if connected to the eNB correctly.\
 Version is not so relevant, as it simply acts as a gateway and endpoint for the RAN to allow the UEs to connect with the outside world.
 
 
-## code
+### Flexric
+We apply the [Flexric project](https://gitlab.eurecom.fr/mosaic5g/flexric), where the setup must be compiled locally
+The files xapp_sdk.py and _xapp_sdk.so in /build/example/xapp/python must be copied to the /util/ folder
+
+### Data
+We used an assortment of videos from reference [18] in the article. For our convinience we made a single large video to simplify the process.
+
+
+## GAI and control channel based execution
 
 ### mec.py
 This script is run on the MEC with a GPU. Most of the dependencies listed were for running this script.\
@@ -62,7 +74,7 @@ When applying GAI\
 `$ python3 ue1.py -li <ue1_ip>  -mec <mec_ip>  -p <port>`
 
 When not applying GAI\
-`$ python3 ue1.py -li <ue1_ip>  -mec <mec_ip>  -g 1 -p  <port>`
+`$ python3 ue1.py -li <ue1_ip>  -mec <mec_ip>  -g 1 -p  <port>  --nogai`
 
 
 
@@ -75,9 +87,37 @@ When applying GAI\
 
 
 When not applying GAI\
-`$ python3 ue2.py -li <ue2_ip>  -mec <mec_ip>  -p <port>`
+`$ python3 ue2.py -li <ue2_ip>  -mec <mec_ip>  -p <port> --nogai`
 
-### analysis.py
+## ABR-based
+
+Similar to the GAI and semantic-based this can be run with TCP and UDP. However, in this case it most be hardcoded in the "abrprobe.py" file
+Same applies to the port used for communication.
+
+All the files impor tthe "abrprobe.py" which probes and adapts the rate in two levels for the comparison with GAI-based.
+This is extendable to more high-resolution options, but for the case of the upscaling model the rate and such is configured to fit such that the low-SNR period is insignicant to support the "full" video quality, while the high-SNR can do this
+The FPS and video quality are configured to support this in our current setup, but more high-resolution choices could also be adapted.
+
+### MEC
+
+`python3 abrmec.py`
+
+### UE1
+
+`python3 abrue1.py`
+
+### UE2
+
+`python3 abrue2.py`
+
+## analysis.py
 
 in the file the parameter experiment_folders must be set, which can contain the relative path to the experiment folders.\
 These folders are the resulting folder after running mec.py, which collects experiment folders from ue1 and ue2 after the experiments are run.
+
+### Vmaf analysis
+
+Having generated the video files we generate the vmaf analysis by running.
+Must place correct path to reference vidoe, and the ABR,GAI and noGAI videos to get results.
+
+`python3 vmaf_analysis/vmafanalysis.py`
